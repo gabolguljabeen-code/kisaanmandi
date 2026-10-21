@@ -1,0 +1,7 @@
+{
+  "name": "KisanMandi",
+  "description": "Wholesale mandi crop prices, marketplace, alerts, and profit calculator for farmers in Sindh, Pakistan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
