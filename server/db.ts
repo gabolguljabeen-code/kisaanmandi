@@ -1,12 +1,12 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { createClient } from '@libsql/client';
+import type { Request, Response, NextFunction } from 'express';
 import { User, Crop, Market, PriceRecord, Listing, Alert } from '../shared/types.ts';
 import { generateSeedData, SeedData } from './seed.ts';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const DATA_FILE = path.join(__dirname, 'data.json');
+const client = createClient({
+  url: process.env.TURSO_DATABASE_URL as string,
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
 
 class Database {
   users: User[] = [];
@@ -16,58 +16,75 @@ class Database {
   listings: Listing[] = [];
   alerts: Alert[] = [];
 
-  constructor() {
-    this.init();
+  private tableReady: Promise<unknown> | null = null;
+  private firstLoad = true;
+  private pendingSave: Promise<void> = Promise.resolve();
+
+  private apply(data: SeedData) {
+    this.users = data.users || [];
+    this.crops = data.crops || [];
+    this.markets = data.markets || [];
+    this.prices = data.prices || [];
+    this.listings = data.listings || [];
+    this.alerts = data.alerts || [];
   }
 
-  init() {
-    const shouldReset = process.env.SEED_RESET === 'true';
-    if (!shouldReset && fs.existsSync(DATA_FILE)) {
+  // Load latest data from Turso (runs before each request)
+  async load() {
+    if (!this.tableReady) {
+      this.tableReady = client.execute(
+        'CREATE TABLE IF NOT EXISTS app_state (id INTEGER PRIMARY KEY, data TEXT NOT NULL)'
+      );
+    }
+    await this.tableReady;
+
+    const forceReset = this.firstLoad && process.env.SEED_RESET === 'true';
+    this.firstLoad = false;
+
+    const res = await client.execute('SELECT data FROM app_state WHERE id = 1');
+    if (res.rows.length > 0 && !forceReset) {
       try {
-        const raw = fs.readFileSync(DATA_FILE, 'utf-8');
-        const data: SeedData = JSON.parse(raw);
-        this.users = data.users || [];
-        this.crops = data.crops || [];
-        this.markets = data.markets || [];
-        this.prices = data.prices || [];
-        this.listings = data.listings || [];
-        this.alerts = data.alerts || [];
+        this.apply(JSON.parse(String(res.rows[0].data)));
         return;
       } catch (e) {
-        console.error('Failed to load data.json, regenerating seed...', e);
+        console.error('Bad data in Turso, reseeding...', e);
       }
     }
-    this.reset();
+    this.apply(generateSeedData());
+    await this.persist();
   }
 
   reset() {
-    const seed = generateSeedData();
-    this.users = seed.users;
-    this.crops = seed.crops;
-    this.markets = seed.markets;
-    this.prices = seed.prices;
-    this.listings = seed.listings;
-    this.alerts = seed.alerts;
+    this.apply(generateSeedData());
     this.save();
   }
 
-  save() {
-    try {
-      const data: SeedData = {
-        users: this.users,
-        crops: this.crops,
-        markets: this.markets,
-        prices: this.prices,
-        listings: this.listings,
-        alerts: this.alerts,
-      };
-      fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
-    } catch (e) {
-      console.error('Error saving data.json:', e);
-    }
+  private async persist() {
+    const data: SeedData = {
+      users: this.users,
+      crops: this.crops,
+      markets: this.markets,
+      prices: this.prices,
+      listings: this.listings,
+      alerts: this.alerts,
+    };
+    await client.execute({
+      sql: 'INSERT INTO app_state (id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data',
+      args: [JSON.stringify(data)],
+    });
   }
 
-  // Lookup helpers
+  // Same name as before, so the rest of the app still works
+  save() {
+    this.pendingSave = this.pendingSave
+      .then(() => this.persist())
+      .catch((e) => console.error('Error saving to Turso:', e));
+  }
+
+  flush() {
+    return this.pendingSave;
+  }
+
   getUser(id: string): User | undefined {
     return this.users.find((u) => u.id === id);
   }
@@ -86,3 +103,13 @@ class Database {
 }
 
 export const db = new Database();
+
+// Loads data before each request and waits for saves before replying
+export function dbMiddleware(req: Request, res: Response, next: NextFunction) {
+  const originalEnd = res.end.bind(res) as any;
+  (res as any).end = (...args: any[]) => {
+    db.flush().then(() => originalEnd(...args));
+    return res;
+  };
+  db.load().then(() => next()).catch(next);
+}
