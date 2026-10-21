@@ -8,10 +8,12 @@ import { listingsRouter } from './routes/listings.ts';
 import { alertsRouter } from './routes/alerts.ts';
 import { profitRouter } from './routes/profit.ts';
 import { errorHandler } from './middleware/errors.ts';
+import { dbMiddleware } from './db.ts';
 
 export function createApp() {
-  const app = express();
-  app.use(express.json());
+const app = express();
+app.use(express.json());
+app.use('/api', dbMiddleware);
 
   // API Routes
   app.use('/api', healthRouter);
