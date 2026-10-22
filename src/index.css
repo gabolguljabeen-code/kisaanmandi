@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
+@variant dark (.dark &);
 
 @theme {
   --color-forest: #1F4D2B;
