@@ -4,7 +4,7 @@ import { User, Crop, Market, PriceRecord, Listing, Alert } from '../shared/types
 import { generateSeedData, SeedData } from './seed.ts';
 
 const client = createClient({
-  url: process.env.TURSO_DATABASE_URL as string,
+  url: process.env.TURSO_DATABASE_URL || ':memory:',
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
@@ -31,27 +31,34 @@ class Database {
 
   // Load latest data from Turso (runs before each request)
   async load() {
-    if (!this.tableReady) {
-      this.tableReady = client.execute(
-        'CREATE TABLE IF NOT EXISTS app_state (id INTEGER PRIMARY KEY, data TEXT NOT NULL)'
-      );
-    }
-    await this.tableReady;
+    try {
+      if (!this.tableReady) {
+        this.tableReady = client.execute(
+          'CREATE TABLE IF NOT EXISTS app_state (id INTEGER PRIMARY KEY, data TEXT NOT NULL)'
+        );
+      }
+      await this.tableReady;
 
-    const forceReset = this.firstLoad && process.env.SEED_RESET === 'true';
-    this.firstLoad = false;
+      const forceReset = this.firstLoad && process.env.SEED_RESET === 'true';
+      this.firstLoad = false;
 
-    const res = await client.execute('SELECT data FROM app_state WHERE id = 1');
-    if (res.rows.length > 0 && !forceReset) {
-      try {
-        this.apply(JSON.parse(String(res.rows[0].data)));
-        return;
-      } catch (e) {
-        console.error('Bad data in Turso, reseeding...', e);
+      const res = await client.execute('SELECT data FROM app_state WHERE id = 1');
+      if (res.rows.length > 0 && !forceReset) {
+        try {
+          this.apply(JSON.parse(String(res.rows[0].data)));
+          return;
+        } catch (e) {
+          console.error('Bad data in Turso, reseeding...', e);
+        }
+      }
+      this.apply(generateSeedData());
+      await this.persist();
+    } catch (err) {
+      console.error('Error connecting to Turso, using in-memory state:', err);
+      if (this.users.length === 0) {
+        this.apply(generateSeedData());
       }
     }
-    this.apply(generateSeedData());
-    await this.persist();
   }
 
   reset() {
@@ -68,10 +75,14 @@ class Database {
       listings: this.listings,
       alerts: this.alerts,
     };
-    await client.execute({
-      sql: 'INSERT INTO app_state (id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data',
-      args: [JSON.stringify(data)],
-    });
+    try {
+      await client.execute({
+        sql: 'INSERT INTO app_state (id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data',
+        args: [JSON.stringify(data)],
+      });
+    } catch (err) {
+      console.error('Error persisting to Turso:', err);
+    }
   }
 
   // Same name as before, so the rest of the app still works

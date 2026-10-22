@@ -1,16 +1,4 @@
-export type District =
-  | 'Hyderabad'
-  | 'Sukkur'
-  | 'Larkana'
-  | 'Karachi'
-  | 'Nawabshah'
-  | 'Mirpurkhas'
-  | 'Dadu'
-  | 'Khairpur'
-  | 'Jacobabad'
-  | 'Thatta';
-
-export const DISTRICTS: District[] = [
+export const DISTRICTS = [
   'Hyderabad',
   'Sukkur',
   'Larkana',
@@ -21,7 +9,9 @@ export const DISTRICTS: District[] = [
   'Khairpur',
   'Jacobabad',
   'Thatta',
-];
+] as const;
+
+export type District = (typeof DISTRICTS)[number];
 
 export type CropCategory = 'Grains' | 'Vegetables' | 'Fruits' | 'Pulses' | 'Cash Crops';
 

@@ -9,6 +9,11 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
 export async function startServer() {
+  // Do not call app.listen() on Vercel
+  if (process.env.VERCEL) {
+    return null;
+  }
+
   const app = createApp();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
   const isProduction = process.env.NODE_ENV === 'production';
@@ -38,7 +43,7 @@ export async function startServer() {
   return server;
 }
 
-if (process.env.RUN_STANDALONE === 'true' || fileURLToPath(import.meta.url) === process.argv[1]) {
+if (!process.env.VERCEL && (process.env.RUN_STANDALONE === 'true' || fileURLToPath(import.meta.url) === process.argv[1])) {
   startServer().catch((err) => {
     console.error('Fatal server startup error:', err);
     process.exit(1);

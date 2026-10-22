@@ -11,19 +11,29 @@ import { errorHandler } from './middleware/errors.ts';
 import { dbMiddleware } from './db.ts';
 
 export function createApp() {
-const app = express();
-app.use(express.json());
-app.use('/api', dbMiddleware);
+  const app = express();
+  app.use(express.json());
 
-  // API Routes
-  app.use('/api', healthRouter);
-  app.use('/api', adminRouter);
-  app.use('/api', usersRouter);
-  app.use('/api', catalogRouter);
-  app.use('/api', pricesRouter);
-  app.use('/api', listingsRouter);
-  app.use('/api', alertsRouter);
-  app.use('/api', profitRouter);
+  // Database middleware runs before API routes
+  app.use('/api', dbMiddleware);
+  app.use(dbMiddleware);
+
+  const routers = [
+    healthRouter,
+    adminRouter,
+    usersRouter,
+    catalogRouter,
+    pricesRouter,
+    listingsRouter,
+    alertsRouter,
+    profitRouter,
+  ];
+
+  // Mount API routers under /api as well as root so both /api/... and stripped /... work seamlessly
+  for (const router of routers) {
+    app.use('/api', router);
+    app.use(router);
+  }
 
   // Unknown API routes fallback
   app.all('/api/*', (_req, res) => {

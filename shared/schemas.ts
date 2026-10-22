@@ -13,30 +13,22 @@ export const UserCreateSchema = z.object({
     .string()
     .trim()
     .regex(phoneRegex, { message: 'Phone must be an 11-digit Pakistani number (03XXXXXXXXX)' }),
-  district: z.enum(DISTRICTS as [string, ...string[]], {
-    errorMap: () => ({ message: 'Please select a valid district in Sindh' }),
-  }),
-  role: z.enum(['Farmer', 'Buyer'], {
-    errorMap: () => ({ message: 'Role must be Farmer or Buyer' }),
-  }),
+  district: z.enum(DISTRICTS),
+  role: z.enum(['Farmer', 'Buyer']),
 });
 
 export const UserUpdateSchema = z.object({
   name: z.string().trim().min(2).max(60).optional(),
   phone: z.string().trim().regex(phoneRegex).optional(),
-  district: z.enum(DISTRICTS as [string, ...string[]]).optional(),
+  district: z.enum(DISTRICTS).optional(),
 });
 
 export const ListingCreateSchema = z.object({
   crop_id: z.string().min(1, { message: 'Crop is required' }),
   quantity: z.coerce.number().positive({ message: 'Quantity must be greater than 0' }),
   asking_price: z.coerce.number().positive({ message: 'Asking price must be greater than 0' }),
-  district: z.enum(DISTRICTS as [string, ...string[]], {
-    errorMap: () => ({ message: 'Please select a valid district' }),
-  }),
-  grade: z.enum(['A', 'B', 'C'], {
-    errorMap: () => ({ message: 'Grade must be A, B, or C' }),
-  }),
+  district: z.enum(DISTRICTS),
+  grade: z.enum(['A', 'B', 'C']),
   available_from: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Date format must be YYYY-MM-DD' })
@@ -57,7 +49,7 @@ export const ListingUpdateSchema = z.object({
   crop_id: z.string().min(1).optional(),
   quantity: z.coerce.number().positive().optional(),
   asking_price: z.coerce.number().positive().optional(),
-  district: z.enum(DISTRICTS as [string, ...string[]]).optional(),
+  district: z.enum(DISTRICTS).optional(),
   grade: z.enum(['A', 'B', 'C']).optional(),
   available_from: z
     .string()
@@ -70,9 +62,7 @@ export const ListingUpdateSchema = z.object({
 export const AlertCreateSchema = z.object({
   crop_id: z.string().min(1, { message: 'Crop is required' }),
   market_id: z.string().min(1, { message: 'Market is required' }),
-  condition: z.enum(['Above', 'Below'], {
-    errorMap: () => ({ message: 'Condition must be Above or Below' }),
-  }),
+  condition: z.enum(['Above', 'Below']),
   target_price: z.coerce.number().positive({ message: 'Target price must be greater than 0' }),
   active_status: z.boolean().optional().default(true),
 });
@@ -100,4 +90,3 @@ export const ProfitCalcSchema = z.object({
 });
 
 export const ProfitCalculateSchema = ProfitCalcSchema;
-
