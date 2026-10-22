@@ -44,7 +44,11 @@ export function safeRemove(key: string): void {
 }
 
 export function getStoredUserId(): string | null {
-  return safeGet(KEY_USER_ID);
+  const directId = safeGet(KEY_USER_ID);
+  if (directId) return directId;
+  const user = getStoredUser();
+  if (user?.id) return user.id;
+  return 'u1';
 }
 
 export function setStoredUserId(id: string) {
@@ -53,12 +57,22 @@ export function setStoredUserId(id: string) {
 
 export function getStoredUser(): User | null {
   const raw = safeGet(KEY_USER);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
+  if (raw) {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      // ignore
+    }
   }
+  const defaultFarmer: User = {
+    id: 'u1',
+    name: 'Ali Demo',
+    phone: '03000000001',
+    district: 'Sukkur',
+    role: 'Farmer',
+    created_at: '2026-10-01T08:00:00Z',
+  };
+  return defaultFarmer;
 }
 
 export function setStoredUser(user: User) {

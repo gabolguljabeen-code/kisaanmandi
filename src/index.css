@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-forest: #1F4D2B;
   --color-leaf: #5C8A3C;

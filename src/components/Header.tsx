@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { Sprout, Sun, Moon, Globe } from 'lucide-react';
 import { setAppLanguage } from '../lib/i18n.ts';
 import { applyTheme } from '../lib/theme.ts';
-import { getStoredTheme } from '../lib/storage.ts';
 
 interface HeaderProps {
   isOffline?: boolean;
@@ -11,8 +10,17 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ isOffline }) => {
   const { t, i18n } = useTranslation();
-  const [currentTheme, setCurrentTheme] = React.useState<'system' | 'light' | 'dark'>(getStoredTheme());
+  const [isDark, setIsDark] = React.useState<boolean>(() => {
+    if (typeof document !== 'undefined') {
+      return document.documentElement.classList.contains('dark');
+    }
+    return false;
+  });
   const isUrdu = i18n.language === 'ur';
+
+  React.useEffect(() => {
+    setIsDark(document.documentElement.classList.contains('dark'));
+  }, []);
 
   const toggleLanguage = () => {
     const nextLang = isUrdu ? 'en' : 'ur';
@@ -20,9 +28,9 @@ export const Header: React.FC<HeaderProps> = ({ isOffline }) => {
   };
 
   const toggleTheme = () => {
-    const next = currentTheme === 'dark' ? 'light' : 'dark';
-    setCurrentTheme(next);
-    applyTheme(next);
+    const nextDark = !document.documentElement.classList.contains('dark');
+    setIsDark(nextDark);
+    applyTheme(nextDark ? 'dark' : 'light');
   };
 
   return (
@@ -63,7 +71,7 @@ export const Header: React.FC<HeaderProps> = ({ isOffline }) => {
             aria-label="Toggle light and dark theme"
             className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1F4D2B]/80 border border-[#F3E6C4]/30 text-[#F3E6C4] hover:bg-[#1F4D2B]/60 active:scale-95 transition"
           >
-            {currentTheme === 'dark' ? (
+            {isDark ? (
               <Sun className="h-4 w-4 text-[#E8A317]" />
             ) : (
               <Moon className="h-4 w-4 text-[#F3E6C4]" />

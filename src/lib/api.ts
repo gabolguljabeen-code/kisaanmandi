@@ -25,10 +25,9 @@ class ApiClient {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    const userId = getStoredUserId();
-    if (userId) {
-      headers['X-User-Id'] = userId;
-    }
+    const userId = getStoredUserId() || 'u1';
+    headers['X-User-Id'] = userId;
+    headers['x-user-id'] = userId;
     return headers;
   }
 
