@@ -68,7 +68,10 @@ export const PricesPage: React.FC<PricesPageProps> = ({
     try {
       const [pricesRes, insightData] = await Promise.all([
         api.getPricesToday(selectedMarketId, selectedCategory),
-        api.getPriceInsight(selectedMarketId),
+        api.getPriceInsight(selectedMarketId).catch((err) => {
+          console.warn('Insight fetch failed, continuing without insight:', err);
+          return null;
+        }),
       ]);
 
       setPrices(pricesRes.data);

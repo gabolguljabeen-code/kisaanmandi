@@ -61,6 +61,17 @@ class ApiClient {
       return {} as T;
     }
 
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      throw {
+        error: {
+          code: 'invalid_response',
+          message_en: `Expected JSON but received ${contentType || 'HTML'}.`,
+          message_ur: 'سرور کا جواب درست نہیں ہے۔',
+        },
+      };
+    }
+
     return res.json();
   }
 
